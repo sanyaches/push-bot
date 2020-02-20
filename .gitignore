@@ -207,4 +207,7 @@ $RECYCLE.BIN/
 .idea/modules.xml
 .idea/push-bot.iml
 .idea/vcs.xml
-main.py
+.idea/dataSources.local.xml
+.idea/dataSources.xml
+some.db
+config.py
