@@ -1,2 +1,2 @@
-### push-bot
-# VK Mail push Telegram bot
+# push-bot
+### VK Mail push Telegram bot
