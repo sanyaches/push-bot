@@ -1,3 +1,5 @@
+google
+googleapiclient
 certifi==2019.11.28
 chardet==3.0.4
 gunicorn==20.0.4

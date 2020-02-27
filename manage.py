@@ -1,7 +1,8 @@
 import config
 import telebot
 import urllib.parse
-import vk_messages
+from classes import vk_messages
+from classes import gmail_messages
 from telebot import apihelper
 from sqlalchemy import exists
 from models import User, session
@@ -10,9 +11,19 @@ bot = telebot.TeleBot(config.token)
 apihelper.proxy = config.proxy
 
 
-def create_thread(account):
-    polling = vk_messages.VkPolling(account=account)
-    polling.start()
+def create_thread_vk(account):
+    polling_vk = vk_messages.VkPolling(account=account)
+    polling_vk.start()
+
+
+def create_thread_gmail(account):
+    polling_gmail = gmail_messages.GmailPolling(account=account)
+    polling_gmail.start()
+
+
+def create_thread(account_vk, account_gmail):
+    create_thread_vk(account_vk)
+    create_thread_gmail(account_gmail)
 
 
 def start_threads():

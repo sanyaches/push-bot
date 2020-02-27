@@ -1,10 +1,11 @@
+# GMAIL POLING MESSAGES #
 import manage
 from vk_api import vk_api
 from threading import Thread
 from vk_api.longpoll import VkLongPoll, VkEventType
 
 
-class VkPolling(Thread):
+class GmailPolling(Thread):
 
     def __init__(self, account):
         Thread.__init__(self)
