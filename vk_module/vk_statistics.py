@@ -1,7 +1,9 @@
 import datetime
 import time
-import manage
+
 import vk_api
+
+import manage
 
 
 class VkStatistics:

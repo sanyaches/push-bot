@@ -5,29 +5,52 @@ from sqlalchemy import exists
 from telebot import apihelper, types
 
 import config
-from vk_module import vk_messages
 from models import User, session
+from vk_module import vk_messages
 from vk_module.vk_statistics import VkStatistics
 
 bot = telebot.TeleBot(config.token)
 apihelper.proxy = config.proxy
 
+threads = []
 
-def create_thread(account):
-    polling = vk_messages.VkPolling(account=account)
-    polling.start()
+
+def get_user(message):
+    return session.query(User).filter_by(chat_id=message.chat.id).first()
+
+
+def create_thread(accounts):
+    for account in accounts:
+        threads.append(vk_messages.VkPolling(account=account))
 
 
 def start_threads():
     users = session.query(User).all()
-    for user in users:
-        create_thread(user)
+    create_thread(users)
+    for thread in threads:
+        thread.start()
+
+
+def pause_thread(message):
+    for thread in threads:
+        if thread.chat_id == message.chat.id:
+            thread.stop()
+
+
+def resume_thread(message):
+    for thread in threads:
+        if thread.chat_id == message.chat.id:
+            thread.resume()
 
 
 def statistics_markup():
     markup = types.ReplyKeyboardMarkup()
     statistics_vk_btn = types.KeyboardButton('Статистика Вконтакте')
     statistics_mail_btn = types.KeyboardButton('Статистика Gmail')
+    pause_btn = types.KeyboardButton('Приостановить уведомления')
+    resume_btn = types.KeyboardButton('Восстановить уведомления')
+    markup.add(pause_btn)
+    markup.add(resume_btn)
     markup.add(statistics_vk_btn)
     markup.add(statistics_mail_btn)
     return markup
@@ -35,7 +58,7 @@ def statistics_markup():
 
 def process_vk_statistics(message):
     chat_id = message.chat.id
-    user = session.query(User).filter_by(chat_id=chat_id).first()
+    user = get_user(message)
     vk_statistics = VkStatistics(vk_token=user.vk_token, chat_id=chat_id).by_date(message.text)
     if vk_statistics is not None:
         bot.send_message(chat_id, vk_statistics)
@@ -56,6 +79,16 @@ def send_welcome(message):
     bot.send_message(message.chat.id, text, parse_mode='Markdown')
 
 
+@bot.message_handler(regexp='Приостановить уведомления')
+def pause_vk_polling(message):
+    pause_thread(message)
+
+
+@bot.message_handler(regexp='Восстановить уведомления')
+def resume_vk_polling(message):
+    resume_thread(message)
+
+
 @bot.message_handler(regexp=r'(www\.)?(vk.com\/)')
 def parsing_vk_url(message):
     chat_id = message.chat.id
@@ -72,7 +105,9 @@ def parsing_vk_url(message):
     new_user = User(chat_id, token)
     session.add(new_user)
     session.commit()
-    create_thread(new_user)
+    thread = vk_messages.VkPolling(new_user)
+    thread.start()
+    threads.append(thread)
     bot.send_message(message.chat.id, 'Вы успешно зарегистрированы', reply_markup=statistics_markup())
 
 
