@@ -22,6 +22,7 @@ class VkStatistics:
         conversations = [conversation for conversation in vk.messages.getConversations(extended=1, count=20)[
             'profiles']]
         conversations_statistics = {}
+        manage.bot.send_message(self.chat_id, text='Сбор статистики\nПожалуйста подождите')
         for conversation in conversations:
             count_history_messages = 0
             user_id = conversation['id']
