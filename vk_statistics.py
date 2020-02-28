@@ -29,6 +29,8 @@ class VkStatistics:
             for message in messages['items']:
                 if message['date'] >= time_filter:
                     count_history_messages += 1
+            if count_history_messages == 0:
+                continue
             name_user_id = conversation['first_name'] + ' ' + conversation['last_name']
             conversations_statistics[name_user_id] = count_history_messages
         return "\n".join("{!s} : {!r}".format(key, val) for (key, val) in conversations_statistics.items())
