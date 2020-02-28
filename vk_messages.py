@@ -1,7 +1,9 @@
-import manage
-from vk_api import vk_api
 from threading import Thread
+
+from vk_api import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
+
+import manage
 
 
 class VkPolling(Thread):
