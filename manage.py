@@ -36,8 +36,9 @@ def statistics_markup():
 def process_vk_statistics(message):
     chat_id = message.chat.id
     user = session.query(User).filter_by(chat_id=chat_id).first()
-    vk_statistics = VkStatistics(user.vk_token).by_date(message.text)
-    bot.send_message(chat_id, vk_statistics)
+    vk_statistics = VkStatistics(vk_token=user.vk_token, chat_id=chat_id).by_date(message.text)
+    if vk_statistics is not None:
+        bot.send_message(chat_id, vk_statistics)
 
 
 @bot.message_handler(commands=['start'])

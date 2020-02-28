@@ -1,18 +1,24 @@
 import datetime
 import time
-
+import manage
 import vk_api
 
 
 class VkStatistics:
 
-    def __init__(self, vk_token):
+    def __init__(self, vk_token, chat_id):
         self.vk_token = vk_token
+        self.chat_id = chat_id
 
     def by_date(self, date):
+        global time_filter
         vk_session = vk_api.VkApi(token=self.vk_token)
         vk = vk_session.get_api()
-        time_filter = time.mktime(datetime.datetime.strptime(date, "%d.%m.%Y %H:%M").timetuple())
+        try:
+            time_filter = time.mktime(datetime.datetime.strptime(date, "%d.%m.%Y %H:%M").timetuple())
+        except:
+            manage.bot.send_message(chat_id=self.chat_id, text='Неверный формат даты')
+            return
         conversations = [conversation for conversation in vk.messages.getConversations(extended=1, count=20)[
             'profiles']]
         conversations_statistics = {}
