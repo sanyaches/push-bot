@@ -75,7 +75,7 @@ def parsing_vk_url(message):
     bot.send_message(message.chat.id, 'Вы успешно зарегистрированы', reply_markup=statistics_markup())
 
 
-@bot.message_handler(func=lambda message: 'Статистика ВК')
+@bot.message_handler(regexp='Статистика ВК')
 def statistics_vk(message):
     msg = bot.reply_to(message, 'Введите дату в виде (22.02.2020 13:22)')
     bot.register_next_step_handler(msg, process_vk_statistics)
