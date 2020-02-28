@@ -5,9 +5,9 @@ from sqlalchemy import exists
 from telebot import apihelper, types
 
 import config
-import vk_messages
+from vk_module import vk_messages
 from models import User, session
-from vk_statistics import VkStatistics
+from vk_module.vk_statistics import VkStatistics
 
 bot = telebot.TeleBot(config.token)
 apihelper.proxy = config.proxy
