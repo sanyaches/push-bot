@@ -1,8 +1,13 @@
+import datetime
+import time
 import urllib.parse
 
 import telebot
+import telebot_calendar
 from sqlalchemy import exists
-from telebot import apihelper, types
+from telebot import apihelper
+from telebot.types import ReplyKeyboardRemove, CallbackQuery, KeyboardButton, ReplyKeyboardMarkup
+from telebot_calendar import CallbackData
 
 import config
 from models import User, session
@@ -13,6 +18,7 @@ bot = telebot.TeleBot(config.token)
 apihelper.proxy = config.proxy
 
 threads = []
+calendar = CallbackData("calendar_1", "action", "year", "month", "day")
 
 
 def get_user(message):
@@ -44,24 +50,16 @@ def resume_thread(message):
 
 
 def statistics_markup():
-    markup = types.ReplyKeyboardMarkup()
-    statistics_vk_btn = types.KeyboardButton('Статистика Вконтакте')
-    statistics_mail_btn = types.KeyboardButton('Статистика Gmail')
-    pause_btn = types.KeyboardButton('Приостановить уведомления')
-    resume_btn = types.KeyboardButton('Восстановить уведомления')
+    markup = ReplyKeyboardMarkup()
+    statistics_vk_btn = KeyboardButton('Статистика Вконтакте')
+    statistics_mail_btn = KeyboardButton('Статистика Gmail')
+    pause_btn = KeyboardButton('Приостановить уведомления')
+    resume_btn = KeyboardButton('Восстановить уведомления')
     markup.add(pause_btn)
     markup.add(resume_btn)
     markup.add(statistics_vk_btn)
     markup.add(statistics_mail_btn)
     return markup
-
-
-def process_vk_statistics(message):
-    chat_id = message.chat.id
-    user = get_user(message)
-    vk_statistics = VkStatistics(vk_token=user.vk_token, chat_id=chat_id).by_date(message.text)
-    if vk_statistics is not None:
-        bot.send_message(chat_id, vk_statistics)
 
 
 @bot.message_handler(commands=['start'])
@@ -112,9 +110,41 @@ def parsing_vk_url(message):
 
 
 @bot.message_handler(regexp='Статистика ВК')
-def statistics_vk(message):
-    msg = bot.reply_to(message, 'Введите дату в виде (22.02.2020 13:22)')
-    bot.register_next_step_handler(msg, process_vk_statistics)
+def vk_statistic(message):
+    now = datetime.datetime.now()
+    bot.send_message(
+        message.chat.id,
+        "Выберите день",
+        reply_markup=telebot_calendar.create_calendar(
+            name=calendar.prefix,
+            year=now.year,
+            month=now.month,
+        ),
+    )
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith(calendar.prefix))
+def callback_inline(call: CallbackQuery):
+    name, action, year, month, day = call.data.split(calendar.sep)
+    date = telebot_calendar.calendar_query_handler(
+        bot=bot, call=call, name=name, action=action, year=year, month=month, day=day
+    )
+    if action == "DAY":
+        bot.send_message(
+            chat_id=call.from_user.id,
+            text=f"Вы выбрали {date.strftime('%d.%m.%Y')}\nСбор статистики\nПожалуйста подождите",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        account = session.query(User).filter_by(chat_id=call.from_user.id).first()
+        vk_statistics = VkStatistics(account.vk_token, account.chat_id).by_date(time.mktime(date.timetuple()))
+        bot.send_message(chat_id=call.from_user.id, text=vk_statistics, reply_markup=statistics_markup())
+    elif action == "CANCEL":
+        bot.send_message(
+            chat_id=call.from_user.id,
+            text="Отмена",
+            reply_markup=statistics_markup(),
+        )
+        print(f"{calendar}: Отмена")
 
 
 if __name__ == '__main__':
