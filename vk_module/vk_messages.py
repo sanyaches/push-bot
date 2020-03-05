@@ -1,9 +1,8 @@
-from threading import Thread
-
-from vk_api import vk_api
-from vk_api.longpoll import VkLongPoll, VkEventType
-
+# VK POLING MESSAGES #
 import manage
+from vk_api import vk_api
+from threading import Thread
+from vk_api.longpoll import VkLongPoll, VkEventType
 
 
 class VkPolling(Thread):
@@ -27,7 +26,7 @@ class VkPolling(Thread):
                     manage.bot.send_message(self.chat_id,
                                             f'Новое сообщение {event.message} от: {user_message["first_name"]} '
                                             f'{user_message["last_name"]}')
-
+                                            
     def stop(self):
         self.paused = True
 

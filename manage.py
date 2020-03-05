@@ -1,21 +1,29 @@
-import datetime
-import time
-import urllib.parse
-
+import config
 import telebot
 import telebot_calendar
-from sqlalchemy import exists
+
+import urllib.parse
+import datetime
+import time
+import pickle
+
+from vk_module import vk_messages
+from gmail_module import gmail_messages
+
 from telebot import apihelper
 from telebot.types import ReplyKeyboardRemove, CallbackQuery, KeyboardButton, ReplyKeyboardMarkup
 from telebot_calendar import CallbackData
 
-import config
+from sqlalchemy import exists
 from models import User, session
-from vk_module import vk_messages
+from google_auth_oauthlib.flow import InstalledAppFlow
 from vk_module.vk_statistics import VkStatistics
 
 bot = telebot.TeleBot(config.token)
 apihelper.proxy = config.proxy
+
+# If modifying these scopes, delete the file token.user.
+SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
 threads = []
 calendar = CallbackData("calendar_1", "action", "year", "month", "day")
@@ -27,7 +35,13 @@ def get_user(message):
 
 def create_thread(accounts):
     for account in accounts:
-        threads.append(vk_messages.VkPolling(account=account))
+        if not account.vk_token:
+            threads.append(gmail_messages.GmailPolling(account=account))
+        elif not account.gm_credentials:
+            threads.append(vk_messages.VkPolling(account=account))
+        else:
+            threads.append(vk_messages.VkPolling(account=account))
+            threads.append(gmail_messages.GmailPolling(account=account))
 
 
 def start_threads():
@@ -66,9 +80,11 @@ def statistics_markup():
 def send_welcome(message):
     chat_id = message.chat.id
     (result,) = session.query(exists().where(User.chat_id == chat_id))
+
     if result[0]:
         bot.send_message(message.chat.id, 'Вы уже зарегистрированы', reply_markup=statistics_markup())
         return
+
     url_text = '[ссылке](https://oauth.vk.com/authorize?client_id=2685278&scope=friends,messages,photos,video,' \
                'offline&redirect_uri=https://api.vk.com/blank.html&response_type=token'
     text = f'В данный момент к вашему Telegram аккаунту не подключен какой-либо аккаунт ВКонтакте.️ ' \
@@ -91,21 +107,26 @@ def resume_vk_polling(message):
 def parsing_vk_url(message):
     chat_id = message.chat.id
     (result,) = session.query(exists().where(User.chat_id == chat_id))
+
     if result[0]:
         bot.send_message(message.chat.id, 'Вы уже зарегистрированы', reply_markup=statistics_markup())
         return
+
     fragment = urllib.parse.urlparse(message.text).fragment
     dict_parameters = dict(urllib.parse.parse_qsl(fragment))
     if 'access_token' not in dict_parameters:
         bot.send_message(message.chat.id, 'Отсуствует access_token в URL')
         return
     token = dict_parameters['access_token']
-    new_user = User(chat_id, token)
+
+    new_user = User(chat_id, token, '')
     session.add(new_user)
     session.commit()
+
     thread = vk_messages.VkPolling(new_user)
     thread.start()
     threads.append(thread)
+
     bot.send_message(message.chat.id, 'Вы успешно зарегистрированы', reply_markup=statistics_markup())
 
 
@@ -145,6 +166,48 @@ def callback_inline(call: CallbackQuery):
             reply_markup=statistics_markup(),
         )
         print(f"{calendar}: Отмена")
+
+
+@bot.message_handler(commands=['gmail'])
+# function authGmail(message) => add credentials to db
+# from response oauth google
+def auth_gmail(message):
+    # 1) Check registered in gmail => nothing
+    chat_id = message.chat.id
+    result = get_user(message)
+    # (result,) = session.query(exists().where(User.chat_id == chat_id and User.gm_credentials == ''))
+
+    if result is not None:
+        if result.gm_credentials:
+            bot.send_message(message.chat.id, 'Вы уже зарегистрированы в gmail')
+            return
+
+        # 2) Check registered in vk but not gmail => upgrade user
+
+        # (result,) = session.query(exists().where(User.chat_id == chat_id and User.vk_token and not User.gm_credentials))
+        if not result.gm_credentials:
+            bot.send_message(message.chat.id, 'Сейчас вас перенаправит в браузер для того чтобы зарегистрироваться в gmail')
+            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+
+            result.gm_credentials = pickle.dumps(creds, protocol=0)
+            # result[0].update({'gm_credentials': })
+            session.commit()
+
+    # 3) Get the credentials => add new user
+    flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+    creds = flow.run_local_server(port=0)
+
+    new_user = User(chat_id, '', pickle.dumps(creds, protocol=0))
+    session.add(new_user)
+    session.commit()
+
+    thread = gmail_messages.GmailPolling(account=new_user)
+    thread.start()
+    threads.append(thread)
+
+    # finally => success message :)
+    bot.send_message(message.chat.id, 'Вы успешно зарегистрированы')
 
 
 if __name__ == '__main__':
