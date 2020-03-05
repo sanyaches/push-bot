@@ -3,12 +3,13 @@ import telebot
 import urllib.parse
 from classes import vk_messages
 from classes import gmail_messages
-from telebot import apihelper
+from telebot import apihelper, types
 from sqlalchemy import exists
 from models import User, session
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 import json
+from vk_statistics import VkStatistics
 
 bot = telebot.TeleBot(config.token)
 apihelper.proxy = config.proxy
@@ -38,21 +39,36 @@ def start_threads():
         create_thread(user)
 
 
+def statistics_markup():
+    markup = types.ReplyKeyboardMarkup()
+    statistics_vk_btn = types.KeyboardButton('Статистика Вконтакте')
+    statistics_mail_btn = types.KeyboardButton('Статистика Gmail')
+    markup.add(statistics_vk_btn)
+    markup.add(statistics_mail_btn)
+    return markup
+
+
+def process_vk_statistics(message):
+    chat_id = message.chat.id
+    user = session.query(User).filter_by(chat_id=chat_id).first()
+    vk_statistics = VkStatistics(user.vk_token).by_date(message.text)
+    bot.send_message(chat_id, vk_statistics)
+
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     chat_id = message.chat.id
     (result,) = session.query(exists().where(User.chat_id == chat_id))
 
     if result[0]:
-        bot.send_message(message.chat.id, 'Вы уже зарегистрированы')
+        bot.send_message(message.chat.id, 'Вы уже зарегистрированы', reply_markup=statistics_markup())
         return
 
     url_text = '[ссылке](https://oauth.vk.com/authorize?client_id=2685278&scope=friends,messages,photos,video,' \
                'offline&redirect_uri=https://api.vk.com/blank.html&response_type=token'
     text = f'В данный момент к вашему Telegram аккаунту не подключен какой-либо аккаунт ВКонтакте.️ ' \
            f'Предоставьте мне ' \
-           f'доступ к сообщениям во ВКонтакте. Для этого отправьте полученный URL после перехода по {url_text}' \
-           f'отправьте полученный URL'
+           f'доступ к сообщениям во ВКонтакте. Для этого отправьте полученный URL после перехода по {url_text}'
     bot.send_message(message.chat.id, text, parse_mode='Markdown')
 
 
@@ -61,7 +77,7 @@ def parsing_vk_url(message):
     chat_id = message.chat.id
     (result,) = session.query(exists().where(User.chat_id == chat_id))
     if result[0]:
-        bot.send_message(message.chat.id, 'Вы уже зарегистрированы')
+        bot.send_message(message.chat.id, 'Вы уже зарегистрированы', reply_markup=statistics_markup())
         return
     fragment = urllib.parse.urlparse(message.text).fragment
     dict_parameters = dict(urllib.parse.parse_qsl(fragment))
@@ -75,7 +91,13 @@ def parsing_vk_url(message):
     session.commit()
     create_thread(new_user)
 
-    bot.send_message(message.chat.id, 'Вы успешно зарегистрированы')
+    bot.send_message(message.chat.id, 'Вы успешно зарегистрированы', reply_markup=statistics_markup())
+
+
+@bot.message_handler(func=lambda message: 'Статистика ВК')
+def statistics_vk(message):
+    msg = bot.reply_to(message, 'Введите дату в виде (22.02.2020 13:22)')
+    bot.register_next_step_handler(msg, process_vk_statistics)
 
 
 @bot.message_handler(commands=['gmail'])
