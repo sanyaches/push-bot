@@ -36,7 +36,7 @@ def get_user(message):
 def create_thread(accounts):
     for account in accounts:
         threads.append(vk_messages.VkPolling(account=account))
-        threads.append(gmail_messages.GmailPolling(account=user))
+        threads.append(gmail_messages.GmailPolling(account=account))
 
         
 def start_threads():
@@ -183,14 +183,14 @@ def auth_gmail(message):
         flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
         creds = flow.run_local_server(port=0)
 
-        result[0].update({'gm_credentials': json.dumps(creds.__dict__)})
+        result[0].update({'gm_credentials': json.dumps(creds)})
         session.commit()
 
     # 3) Get the credentials => add new user
     flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
     creds = flow.run_local_server(port=0)
 
-    new_user = User(chat_id, '', creds)
+    new_user = User(chat_id, '', json.dumps(creds))
     session.add(new_user)
     session.commit()
     
