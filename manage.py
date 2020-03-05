@@ -1,15 +1,14 @@
 import config
 import telebot
 import urllib.parse
-from classes import vk_messages
-from classes import gmail_messages
+from vk_module import vk_messages
+from gmail_module import gmail_messages
 from telebot import apihelper, types
 from sqlalchemy import exists
 from models import User, session
 from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
 import json
-from vk_statistics import VkStatistics
+from vk_module.vk_statistics import VkStatistics
 
 bot = telebot.TeleBot(config.token)
 apihelper.proxy = config.proxy
