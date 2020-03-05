@@ -16,7 +16,7 @@ class User(Base):
     vk_token = Column(String)
     gm_credentials = Column(String)
 
-    def __init__(self, chat_id, vk_token, gm_credentials ):
+    def __init__(self, chat_id, vk_token, gm_credentials):
         self.chat_id = chat_id
         self.vk_token = vk_token
         self.gm_credentials = gm_credentials

@@ -6,9 +6,15 @@ from classes import gmail_messages
 from telebot import apihelper
 from sqlalchemy import exists
 from models import User, session
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+import json
 
 bot = telebot.TeleBot(config.token)
 apihelper.proxy = config.proxy
+
+# If modifying these scopes, delete the file token.user.
+SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
 
 def create_thread_vk(user):
@@ -36,9 +42,11 @@ def start_threads():
 def send_welcome(message):
     chat_id = message.chat.id
     (result,) = session.query(exists().where(User.chat_id == chat_id))
+
     if result[0]:
         bot.send_message(message.chat.id, 'Вы уже зарегистрированы')
         return
+
     url_text = '[ссылке](https://oauth.vk.com/authorize?client_id=2685278&scope=friends,messages,photos,video,' \
                'offline&redirect_uri=https://api.vk.com/blank.html&response_type=token'
     text = f'В данный момент к вашему Telegram аккаунту не подключен какой-либо аккаунт ВКонтакте.️ ' \
@@ -61,10 +69,48 @@ def parsing_vk_url(message):
         bot.send_message(message.chat.id, 'Отсуствует access_token в URL')
         return
     token = dict_parameters['access_token']
-    new_user = User(chat_id, token)
+
+    new_user = User(chat_id, token, '')
     session.add(new_user)
     session.commit()
     create_thread(new_user)
+
+    bot.send_message(message.chat.id, 'Вы успешно зарегистрированы')
+
+
+@bot.message_handler(commands=['gmail'])
+# function authGmail(message) => add credentials to db
+# from response oauth google
+def auth_gmail(message):
+
+    # 1) Check registered in gmail => nothing
+    chat_id = message.chat.id
+    (result,) = session.query(exists().where(User.chat_id == chat_id and User.gm_credentials))
+
+    if result[0]:
+        bot.send_message(message.chat.id, 'Вы уже зарегистрированы в gmail')
+        return
+
+    # 2) Check registered in vk but not gmail => upgrade user
+    (result,) = session.query(exists().where(User.chat_id == chat_id and User.vk_token and not User.gm_credentials))
+    if result[0]:
+        bot.send_message(message.chat.id, 'Сейчас вас перенаправит в браузер для того чтобы зарегистрироваться в gmail')
+        flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+        creds = flow.run_local_server(port=0)
+
+        result[0].update({'gm_credentials': json.dumps(creds.__dict__)})
+        session.commit()
+
+    # 3) Get the credentials => add new user
+    flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+    creds = flow.run_local_server(port=0)
+
+    new_user = User(chat_id, '', creds)
+    session.add(new_user)
+    session.commit()
+    create_thread(new_user)
+
+    # finally => success message :)
     bot.send_message(message.chat.id, 'Вы успешно зарегистрированы')
 
 
