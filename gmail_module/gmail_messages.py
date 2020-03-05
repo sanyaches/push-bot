@@ -4,7 +4,7 @@ Class polling
 """
 
 import manage
-import json
+import pickle
 import datetime
 
 from threading import Thread
@@ -17,7 +17,7 @@ class GmailPolling(Thread):
     def __init__(self, account):
         Thread.__init__(self)
         self.chat_id = account.chat_id
-        self.credentials = json.loads(account.gm_credentials)
+        self.credentials = pickle.loads(account.gm_credentials)
 
     def run(self):
         service = build('gmail', 'v1', credentials=self.credentials)

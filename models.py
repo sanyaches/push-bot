@@ -20,3 +20,6 @@ class User(Base):
         self.chat_id = chat_id
         self.vk_token = vk_token
         self.gm_credentials = gm_credentials
+
+
+Base.metadata.create_all(engine)
