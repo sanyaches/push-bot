@@ -11,19 +11,19 @@ bot = telebot.TeleBot(config.token)
 apihelper.proxy = config.proxy
 
 
-def create_thread_vk(account):
-    polling_vk = vk_messages.VkPolling(account=account)
+def create_thread_vk(user):
+    polling_vk = vk_messages.VkPolling(account=user)
     polling_vk.start()
 
 
-def create_thread_gmail(account):
-    polling_gmail = gmail_messages.GmailPolling(account=account)
+def create_thread_gmail(user):
+    polling_gmail = gmail_messages.GmailPolling(account=user)
     polling_gmail.start()
 
 
-def create_thread(account_vk, account_gmail):
-    create_thread_vk(account_vk)
-    create_thread_gmail(account_gmail)
+def create_thread(user):
+    create_thread_vk(user)
+    create_thread_gmail(user)
 
 
 def start_threads():
