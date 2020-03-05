@@ -9,6 +9,7 @@ class VkPolling(Thread):
 
     def __init__(self, account):
         Thread.__init__(self)
+        self.paused = False
         self.chat_id = account.chat_id
         self.vk_token = account.vk_token
 
@@ -17,9 +18,17 @@ class VkPolling(Thread):
         vk = vk_session.get_api()
         long_poll = VkLongPoll(vk_session)
         for event in long_poll.listen():
+            if self.paused:
+                continue
             if event.type == VkEventType.MESSAGE_NEW:
                 if event.to_me:
                     user_message = vk.users.get(user_ids=event.user_id)[0]
                     manage.bot.send_message(self.chat_id,
                                             f'Новое сообщение {event.message} от: {user_message["first_name"]} '
                                             f'{user_message["last_name"]}')
+                                            
+    def stop(self):
+        self.paused = True
+
+    def resume(self):
+        self.paused = False
