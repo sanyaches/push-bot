@@ -21,7 +21,7 @@ from vk_module.vk_statistics import VkStatistics
 from gmail_module.gmail_statistics import GmailStatistics
 
 bot = telebot.TeleBot(config.token)
-# apihelper.proxy = config.proxy
+apihelper.proxy = config.proxy
 
 # If modifying these scopes, delete the file token.user.
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
@@ -169,7 +169,7 @@ def callback_inline(call: CallbackQuery):
         print(f"{calendar}: Отмена")
 
 
-@bot.message_handler(commands=['gmail'])
+@bot.message_handler(regexp='Статистика Gmail')
 # function authGmail(message) => add credentials to db
 # from response oauth google
 def auth_gmail(message):
