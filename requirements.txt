@@ -1,5 +1,7 @@
 telebot
-googleapiclient
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
 beautifulsoup4==4.8.2
 certifi==2019.11.28
 chardet==3.0.4
