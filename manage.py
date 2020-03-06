@@ -169,7 +169,7 @@ def callback_inline(call: CallbackQuery):
         print(f"{calendar}: Отмена")
 
 
-@bot.message_handler(regexp='Статистика Gmail')
+@bot.message_handler(commands=['gmail'])
 # function authGmail(message) => add credentials to db
 # from response oauth google
 def auth_gmail(message):
@@ -210,7 +210,7 @@ def auth_gmail(message):
     bot.send_message(message.chat.id, 'Вы успешно зарегистрированы')
 
 
-@bot.message_handler(commands=['gmailstat'])
+@bot.message_handler(regexp='Статистика Gmail')
 def gmail_statistics(message):
     msg = bot.reply_to(message, 'Введите дату в виде (22.02.2020 13:22)')
     bot.register_next_step_handler(msg, process_gmail_statistics)
