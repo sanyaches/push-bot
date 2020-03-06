@@ -18,9 +18,10 @@ from sqlalchemy import exists
 from models import User, session
 from google_auth_oauthlib.flow import InstalledAppFlow
 from vk_module.vk_statistics import VkStatistics
+from gmail_module.gmail_statistics import GmailStatistics
 
 bot = telebot.TeleBot(config.token)
-apihelper.proxy = config.proxy
+# apihelper.proxy = config.proxy
 
 # If modifying these scopes, delete the file token.user.
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
@@ -184,14 +185,13 @@ def auth_gmail(message):
 
         # 2) Check registered in vk but not gmail => upgrade user
 
-        # (result,) = session.query(exists().where(User.chat_id == chat_id and User.vk_token and not User.gm_credentials))
         if not result.gm_credentials:
-            bot.send_message(message.chat.id, 'Сейчас вас перенаправит в браузер для того чтобы зарегистрироваться в gmail')
+            bot.send_message(message.chat.id,
+                             'Сейчас вас перенаправит в браузер для того чтобы зарегистрироваться в gmail')
             flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
             creds = flow.run_local_server(port=0)
 
             result.gm_credentials = pickle.dumps(creds, protocol=0)
-            # result[0].update({'gm_credentials': })
             session.commit()
 
     # 3) Get the credentials => add new user
@@ -208,6 +208,25 @@ def auth_gmail(message):
 
     # finally => success message :)
     bot.send_message(message.chat.id, 'Вы успешно зарегистрированы')
+
+
+@bot.message_handler(commands=['gmailstat'])
+def gmail_statistics(message):
+    msg = bot.reply_to(message, 'Введите дату в виде (22.02.2020 13:22)')
+    bot.register_next_step_handler(msg, process_gmail_statistics)
+
+
+def process_gmail_statistics(message):
+    global date
+    user = get_user(message)
+    try:
+        date = datetime.datetime.strptime(message.text, "%d.%m.%Y %H:%M")
+    except:
+        bot.send_message(user.chat_id, 'Введите корректную дату')
+    gmail_statistics = GmailStatistics(user.gm_credentials, user.chat_id).by_date(date=date)
+    bot.send_message(user.chat_id, 'Сбор статистики\nПожалуйста подождите')
+    if gmail_statistics is not None:
+        bot.send_message(user.chat_id, gmail_statistics)
 
 
 if __name__ == '__main__':
